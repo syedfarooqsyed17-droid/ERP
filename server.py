@@ -1,4 +1,5 @@
 import json
+import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from queue import Queue
 
@@ -64,3 +65,9 @@ class WardenBridgeHandler(BaseHTTPRequestHandler):
             return
 
         self.send_error(404, "Endpoint not found")
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), WardenBridgeHandler)
+    print(f"Warden server started on port {port}")
+    server.serve_forever()
