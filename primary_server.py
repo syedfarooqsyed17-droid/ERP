@@ -16,8 +16,8 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-ERP_HEALTH_URL = "http://localhost:8001/health" # Update to your live Render URL if deployed
-ERP_WEB_URL = "http://localhost:8001"
+ERP_HEALTH_URL = "https://erp-secondary-app-live.onrender.com/health"
+ERP_WEB_URL = "https://erp-secondary-app-live.onrender.com"
 last_known_status = "ONLINE"
 
 def log_incident_to_db(status, message):
