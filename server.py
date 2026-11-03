@@ -33,6 +33,27 @@ class WardenBridgeHandler(BaseHTTPRequestHandler):
             self.wfile.write(res_body)
             return
         
+        # Serve frontend interface on root or HTML requests
+        if self.path == '/' or self.path == '/index.html' or self.path == '/interface.html':
+            try:
+                filename = 'interface.html' if os.path.exists('interface.html') else 'index.html'
+                if not os.path.exists(filename) and os.path.exists('frontend/interface.html'):
+                    filename = 'frontend/interface.html'
+                
+                if os.path.exists(filename):
+                    with open(filename, 'rb') as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html')
+                    self.send_header('Content-Length', str(len(content)))
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(content)
+                    return
+            except Exception as e:
+                self.send_error(500, f"Internal Server Error: {str(e)}")
+                return
+
         self.send_error(404, "Not Found")
 
     def do_POST(self):
