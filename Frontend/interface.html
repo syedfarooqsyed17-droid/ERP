@@ -14,7 +14,7 @@
     <button id="crash-web-btn" class="Crash Web">Crash Web</button>
   </div>
 
-  <!-- Warden Live Telemetry Dispatch Script with Non-Blocking Buffer -->
+  <!-- Warden Live Telemetry Dispatch Script with Absolute Live URL -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Find the Crash Web button dynamically by ID, class, or text content
@@ -31,11 +31,11 @@
 
       if (crashWebBtn) {
         crashWebBtn.addEventListener('click', async (e) => {
-          console.log("[WARDEN] Crash Web triggered. Dispatching live telemetry POST...");
+          console.log("[WARDEN] Crash Web triggered. Dispatching live telemetry POST to Render...");
 
           try {
-            // 1. Dispatch automated POST request to the backend queue FIRST
-            await fetch('/api/v1/crash-trigger', {
+            // 1. Dispatch automated POST request using the ABSOLUTE live Render URL
+            await fetch('https://erp-secondary-app-live.onrender.com/api/v1/crash-trigger', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -49,14 +49,13 @@
                 patchedCode: "function renderTable() {\n  const visibleRows = items.slice(page * pageSize, (page + 1) * pageSize);\n  visibleRows.forEach(row => renderRow(row));\n}"
               })
             });
-            console.log("[WARDEN] Telemetry successfully queued.");
+            console.log("[WARDEN] Telemetry successfully queued on live server.");
           } catch (err) {
             console.error("[WARDEN] Failed to dispatch live telemetry payload:", err);
           }
 
           // 2. Delay the heavy tab-freezing loop slightly so the fetch packet escapes safely
           setTimeout(() => {
-            // Execute your memory overload / freeze simulation here
             if (typeof runMemoryOverloadSimulation === 'function') {
               runMemoryOverloadSimulation();
             } else {
