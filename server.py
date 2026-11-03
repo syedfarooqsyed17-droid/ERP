@@ -37,6 +37,63 @@ class ERPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests for telemetry endpoints."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
+    def do_POST(self):
+        """Handle incoming telemetry crash triggers from clients or remote nodes."""
+        check_and_rebuild_if_needed()
+
+        if self.path == "/api/v1/crash-trigger":
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length) if content_length > 0 else b"{}"
+
+            try:
+                data = json.loads(post_data.decode("utf-8"))
+            except Exception:
+                data = {}
+
+            crash_event = {
+                "type": "EXPLOIT_INTERCEPTED",
+                "typeClass": data.get("typeClass", "DOM_MEMORY_LEAK_OVERLOAD"),
+                "cwe": data.get("cwe", "CWE-400"),
+                "path": data.get("path", "Frontend/interface.jsx"),
+                "payload": data.get("payload", "UNPAGINATED_DOM_STREAM_ACTIVE"),
+                "vulnCode": data.get(
+                    "vulnCode",
+                    (
+                        "function renderTable() {\n  for(let i=0; i<90000; i++) {\n"
+                        "    document.body.appendChild(createRow(i));\n  }\n}"
+                    ),
+                ),
+                "patchedCode": data.get(
+                    "patchedCode",
+                    (
+                        "function renderTable() {\n  // Virtualized Windowing"
+                        " Pagination\n  const visibleRows = items.slice(page *"
+                        " pageSize, (page + 1) * pageSize);\n"
+                        "  visibleRows.forEach(row => renderRow(row));\n}"
+                    ),
+                ),
+            }
+
+            event_queue.put(crash_event)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            response = {"status": "success", "message": "Crash event queued for AST patch"}
+            self.wfile.write(json.dumps(response).encode("utf-8"))
+            return
+
+        self.send_error(404, "Endpoint not found")
+
     def do_GET(self):
         check_and_rebuild_if_needed()
 
@@ -90,15 +147,16 @@ class ERPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.path = "/index.html"
 
         # Intercept and log standard traffic telemetry
-        log_event = {
-            "type": "TRAFFIC",
-            "method": "GET",
-            "status": 200,
-            "route": self.path,
-            "client": self.client_address[0],
-            "latency": "1.2",
-        }
-        event_queue.put(log_event)
+        if not self.path.startswith("/api/v1/"):
+            log_event = {
+                "type": "TRAFFIC",
+                "method": "GET",
+                "status": 200,
+                "route": self.path,
+                "client": self.client_address[0],
+                "latency": "1.2",
+            }
+            event_queue.put(log_event)
 
         return super().do_GET()
 
