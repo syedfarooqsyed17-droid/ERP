@@ -40,6 +40,16 @@ class ERPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         check_and_rebuild_if_needed()
 
+        # Handle Health Check endpoint for Primary Watchdog monitoring
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            health_data = {"status": "healthy", "timestamp": time.time()}
+            self.wfile.write(json.dumps(health_data).encode("utf-8"))
+            return
+
         # Handle Warden SSE Telemetry Stream
         if self.path == "/api/v1/stream":
             self.send_response(200)
