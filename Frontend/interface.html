@@ -14,7 +14,7 @@
     <button id="crash-web-btn" class="Crash Web">Crash Web</button>
   </div>
 
-  <!-- Warden Live Telemetry Dispatch Script -->
+  <!-- Warden Live Telemetry Dispatch Script with Non-Blocking Buffer -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Find the Crash Web button dynamically by ID, class, or text content
@@ -30,12 +30,12 @@
       }
 
       if (crashWebBtn) {
-        crashWebBtn.addEventListener('click', async () => {
-          console.log("[WARDEN] Crash Web triggered. Dispatches live telemetry POST...");
+        crashWebBtn.addEventListener('click', async (e) => {
+          console.log("[WARDEN] Crash Web triggered. Dispatching live telemetry POST...");
 
           try {
-            // Dispatch automated POST request to the local/live backend queue
-            const response = await fetch('/api/v1/crash-trigger', {
+            // 1. Dispatch automated POST request to the backend queue FIRST
+            await fetch('/api/v1/crash-trigger', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -49,12 +49,26 @@
                 patchedCode: "function renderTable() {\n  const visibleRows = items.slice(page * pageSize, (page + 1) * pageSize);\n  visibleRows.forEach(row => renderRow(row));\n}"
               })
             });
-
-            const result = await response.json();
-            console.log("[WARDEN] Telemetry successfully queued:", result);
+            console.log("[WARDEN] Telemetry successfully queued.");
           } catch (err) {
             console.error("[WARDEN] Failed to dispatch live telemetry payload:", err);
           }
+
+          // 2. Delay the heavy tab-freezing loop slightly so the fetch packet escapes safely
+          setTimeout(() => {
+            // Execute your memory overload / freeze simulation here
+            if (typeof runMemoryOverloadSimulation === 'function') {
+              runMemoryOverloadSimulation();
+            } else {
+              // Fallback heavy loop if function isn't defined globally
+              const container = document.body;
+              for (let i = 0; i < 150000; i++) {
+                const div = document.createElement('div');
+                div.innerText = "OVERLOAD_PACKET_" + i;
+                container.appendChild(div);
+              }
+            }
+          }, 150);
         });
         console.log("[WARDEN] Telemetry listener successfully bound to Crash Web button.");
       } else {
